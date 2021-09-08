@@ -4,14 +4,24 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import firefliesVertexShader from './shaders/fireflies/vertex.glsl'
+import firefliesFragmentShader from './shaders/fireflies/fragment.glsl'
 
 /**
  * Base
  */
 // Debug
+const debugObject = {}
 const gui = new dat.GUI({
     width: 400
 })
+
+debugObject.clearColor = '#252424'
+
+gui.addColor(debugObject, 'clearColor')
+    .onChange(() => {
+        renderer.setClearColor(debugObject.clearColor)
+    })
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -32,7 +42,7 @@ const textureLoader = new THREE.TextureLoader()
 /**
  * Textures
  */
- const bakedTexture = textureLoader.load('baked.jpg')
+const bakedTexture = textureLoader.load('baked.jpg')
 
 /**
  * Materials
@@ -54,11 +64,11 @@ gltfLoader.setDRACOLoader(dracoLoader)
 /**
  * Model
  */
- gltfLoader.load(
+gltfLoader.load(
     'portal.glb',
-    (gltf) =>
-    {
+    (gltf) => {
         scene.add(gltf.scene)
+        console.log(gltf.scene.children)
 
         // Get each object
         const bakedMesh = gltf.scene.children.find((child) => child.name === 'baked')
@@ -75,6 +85,35 @@ gltfLoader.setDRACOLoader(dracoLoader)
     }
 )
 
+
+/**
+ * Fireflies
+ */
+// Geometry
+const firefliesGeometry = new THREE.BufferGeometry()
+const firefliesCount = 30
+const positionArray = new Float32Array(firefliesCount * 3)
+
+for(let i = 0; i < firefliesCount; i++)
+{
+    positionArray[i * 3 + 0] = (Math.random() - 0.5) * 4
+    positionArray[i * 3 + 1] = Math.random() * 1.5
+    positionArray[i * 3 + 2] = (Math.random() - 0.5) * 4
+}
+
+firefliesGeometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3))
+
+// Material
+const firefliesMaterial = new THREE.ShaderMaterial({
+    vertexShader: firefliesVertexShader,
+    fragmentShader: firefliesFragmentShader
+})
+
+// Points
+const fireflies = new THREE.Points(firefliesGeometry, firefliesMaterial)
+scene.add(fireflies)
+
+
 /**
  * Sizes
  */
@@ -83,8 +122,7 @@ const sizes = {
     height: window.innerHeight
 }
 
-window.addEventListener('resize', () =>
-{
+window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -120,6 +158,7 @@ const renderer = new THREE.WebGLRenderer({
     antialias: true
 })
 renderer.setSize(sizes.width, sizes.height)
+renderer.setClearColor(debugObject.clearColor)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputEncoding = THREE.sRGBEncoding
 
@@ -128,8 +167,7 @@ renderer.outputEncoding = THREE.sRGBEncoding
  */
 const clock = new THREE.Clock()
 
-const tick = () =>
-{
+const tick = () => {
     const elapsedTime = clock.getElapsedTime()
 
     // Update controls
